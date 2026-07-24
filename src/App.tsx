@@ -316,7 +316,7 @@ export default function App() {
             )}
 
             {activePage === 'Dashboard' ? (
-              <Dashboard />
+              <Dashboard onNavigate={handleAdminNavigate} />
             ) : activePage === 'All Products' || activePage === 'Products' ? (
               <AllProductsPage onNavigate={handleAdminNavigate} />
             ) : activePage === 'Add Product' ? (

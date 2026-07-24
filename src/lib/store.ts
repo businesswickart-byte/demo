@@ -77,6 +77,14 @@ export interface Seller {
   documents?: Record<string, { fileName: string; fileData?: string; uploadedAt?: string; status?: string }>;
 }
 
+export interface TaxRule {
+  id: string;
+  name: string;
+  rate: string;
+  appliesTo: string;
+  status: 'Active' | 'Inactive';
+}
+
 export interface Coupon {
   id: string;
   code: string;
@@ -137,6 +145,14 @@ export interface VendorRegistration {
   };
   documents?: Record<string, { fileName: string; fileData?: string; uploadedAt?: string; status?: string }>;
 }
+
+const INITIAL_TAX_RULES: TaxRule[] = [
+  { id: '1', name: 'Standard GST - 18%', rate: '18%', appliesTo: 'Electronics, Fashion', status: 'Active' },
+  { id: '2', name: 'Lower GST - 12%', rate: '12%', appliesTo: 'Processed Foods', status: 'Active' },
+  { id: '3', name: 'Reduced GST - 5%', rate: '5%', appliesTo: 'Food, Groceries', status: 'Active' },
+  { id: '4', name: 'Zero Tax - 0%', rate: '0%', appliesTo: 'Fresh Produce', status: 'Active' },
+  { id: '5', name: 'Luxury GST - 28%', rate: '28%', appliesTo: 'Luxury Goods', status: 'Active' },
+];
 
 const INITIAL_VENDOR_REGISTRATIONS: VendorRegistration[] = [];
 const INITIAL_CATEGORIES: any[] = [];
@@ -942,6 +958,51 @@ export const marketplaceStore = {
     const list = this.getBrands();
     const filtered = list.filter(b => b.id !== id);
     this.saveBrands(filtered);
+  },
+
+  // TAX RULES
+  getTaxRules(): TaxRule[] {
+    return getStored('taxRules', INITIAL_TAX_RULES);
+  },
+  saveTaxRules(rules: TaxRule[]): void {
+    setStored('taxRules', rules);
+  },
+  addTaxRule(rule: Partial<TaxRule>): TaxRule {
+    const list = this.getTaxRules();
+    const newId = String(list.length > 0 ? Math.max(...list.map(t => parseInt(t.id) || 0)) + 1 : 1);
+    const item: TaxRule = {
+      id: newId,
+      name: rule.name || 'New Tax Rule',
+      rate: rule.rate || '18%',
+      appliesTo: rule.appliesTo || 'All Products',
+      status: rule.status || 'Active'
+    };
+    list.unshift(item);
+    this.saveTaxRules(list);
+    return item;
+  },
+  updateTaxRule(id: string, updatedFields: Partial<TaxRule>): TaxRule | null {
+    const list = this.getTaxRules();
+    const index = list.findIndex(t => t.id === id);
+    if (index !== -1) {
+      list[index] = { ...list[index], ...updatedFields };
+      this.saveTaxRules(list);
+      return list[index];
+    }
+    return null;
+  },
+  deleteTaxRule(id: string): void {
+    const list = this.getTaxRules();
+    const filtered = list.filter(t => t.id !== id);
+    this.saveTaxRules(filtered);
+  },
+  getTaxInclusive(): boolean {
+    const val = localStorage.getItem('displayTaxInclusive');
+    return val === null ? true : val === 'true';
+  },
+  setTaxInclusive(inclusive: boolean): void {
+    localStorage.setItem('displayTaxInclusive', inclusive ? 'true' : 'false');
+    window.dispatchEvent(new Event('store_taxRules_updated'));
   },
 
   // CLEAR & RESTORE DUMMY DATA METHODS
