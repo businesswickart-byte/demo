@@ -10,11 +10,13 @@ export function SellerInventoryPage() {
   const [toastMsg, setToastMsg] = useState('');
 
   const products = useMarketplaceData('products', () => marketplaceStore.getProducts());
-  const { activeSellerStoreName } = useActiveSellerStore();
+  const { activeSellerStoreName, activeSellerId } = useActiveSellerStore();
   
-  const sellerProducts = products.filter(p => 
-    p.vendor && p.vendor.trim().toLowerCase() === activeSellerStoreName.trim().toLowerCase()
-  );
+  const sellerProducts = products.filter(p => {
+    const vendorMatch = Boolean(p.vendor && p.vendor.trim().toLowerCase() === activeSellerStoreName.trim().toLowerCase());
+    const idMatch = Boolean(p.sellerId && String(p.sellerId) === String(activeSellerId));
+    return vendorMatch || idMatch;
+  });
 
   // Generate dynamic inventory items from real vendor products
   const inventoryItems = sellerProducts.map(p => {

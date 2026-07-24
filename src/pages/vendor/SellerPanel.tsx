@@ -205,22 +205,9 @@ export function SellerPanel() {
 
                 <div className="flex items-center gap-2 self-end sm:self-center shrink-0">
                    <span className="text-xs font-bold text-slate-600 hidden md:inline">Active Store:</span>
-                   <select
-                     value={activeSellerStoreName}
-                     onChange={(e) => {
-                       const selected = sellers.find(s => s.storeName === e.target.value);
-                       if (selected) {
-                         changeSeller(selected);
-                       }
-                     }}
-                     className="px-3 py-1.5 bg-white border border-emerald-300 rounded-xl text-xs font-bold text-slate-800 focus:outline-none focus:ring-2 focus:ring-emerald-400 shadow-xs cursor-pointer"
-                   >
-                     {sellers.map((s) => (
-                       <option key={s.id} value={s.storeName}>
-                         {s.storeName} ({s.name})
-                       </option>
-                     ))}
-                   </select>
+                   <span className="px-3 py-1.5 bg-white border border-emerald-300 rounded-xl text-xs font-bold text-slate-800 shadow-xs">
+                     {activeSellerStoreName}
+                   </span>
                 </div>
              </div>
              

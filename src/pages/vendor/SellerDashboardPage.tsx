@@ -8,16 +8,18 @@ export function SellerDashboardPage() {
   const orders = useMarketplaceData('orders', () => marketplaceStore.getOrders());
   const products = useMarketplaceData('products', () => marketplaceStore.getProducts());
 
-  const { activeSellerStoreName } = useActiveSellerStore();
+  const { activeSellerStoreName, activeSellerId } = useActiveSellerStore();
 
   // Filter dynamic metrics for the logged-in store
   const storeOrders = orders.filter(o => 
     o.store && o.store.trim().toLowerCase() === activeSellerStoreName.trim().toLowerCase()
   );
 
-  const storeProducts = products.filter(p => 
-    p.vendor && p.vendor.trim().toLowerCase() === activeSellerStoreName.trim().toLowerCase()
-  );
+  const storeProducts = products.filter(p => {
+    const vendorMatch = Boolean(p.vendor && p.vendor.trim().toLowerCase() === activeSellerStoreName.trim().toLowerCase());
+    const idMatch = Boolean(p.sellerId && String(p.sellerId) === String(activeSellerId));
+    return vendorMatch || idMatch;
+  });
 
   const totalSalesVal = storeOrders
     .filter(o => o.status !== 'Cancelled')

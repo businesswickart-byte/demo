@@ -32,16 +32,12 @@ export function SellerProductsPage({ initialTab }: SellerProductsPageProps) {
   const [newImage, setNewImage] = useState('');
   const [newDesc, setNewDesc] = useState('');
 
-  // Filter products belonging to active vendor store
-  const sellerProducts = allProducts.filter(p => 
-    (p.vendor && p.vendor.trim().toLowerCase() === activeSellerStoreName.trim().toLowerCase()) ||
-    (p.sellerId && String(p.sellerId) === String(activeActiveSellerIdOrFirst(activeSellerId))) ||
-    !p.vendor
-  );
-
-  function activeActiveSellerIdOrFirst(id: string) {
-    return id || '1';
-  }
+  // Filter products belonging strictly to active vendor store
+  const sellerProducts = allProducts.filter(p => {
+    const vendorMatch = Boolean(p.vendor && p.vendor.trim().toLowerCase() === activeSellerStoreName.trim().toLowerCase());
+    const idMatch = Boolean(p.sellerId && String(p.sellerId) === String(activeSellerId));
+    return vendorMatch || idMatch;
+  });
 
   const handleDelete = (id: number | string) => {
     if (confirm('Are you sure you want to remove this product from your catalog?')) {

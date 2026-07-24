@@ -5,10 +5,31 @@ import { marketplaceStore, useMarketplaceData } from '../../lib/store';
 import { useActiveSellerStore } from '../../lib/useActiveSellerStore';
 
 export function SellerKYCPage() {
-  const { activeSellerStoreName } = useActiveSellerStore();
+  const { activeSellerStoreName, activeSellerId } = useActiveSellerStore();
   const sellers = useMarketplaceData('sellers', () => marketplaceStore.getSellers());
   
-  const currentSeller = sellers.find(s => s.storeName === activeSellerStoreName) || sellers[0];
+  const currentSeller = sellers.find(s => 
+    String(s.id) === String(activeSellerId) || 
+    (s.storeName && s.storeName.trim().toLowerCase() === activeSellerStoreName.trim().toLowerCase())
+  ) || {
+    id: activeSellerId || '1',
+    name: activeSellerStoreName,
+    email: '',
+    storeName: activeSellerStoreName,
+    phone: '',
+    status: 'Active' as const,
+    orders: 0,
+    revenue: '₹0.00',
+    rating: 5.0,
+    gstin: '27ABCDE1234F1Z5',
+    documents: {},
+    bankDetails: {
+      accountName: 'Store Account',
+      bankName: 'HDFC Bank',
+      accountNumber: '50100012345678',
+      ifscCode: 'HDFC0000060'
+    }
+  };
 
   const [documents, setDocuments] = useState<Record<string, { fileName: string; fileData?: string; uploadedAt?: string; status?: string }>>(
     currentSeller?.documents || {
