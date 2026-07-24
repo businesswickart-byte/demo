@@ -53,8 +53,8 @@ export function POSDashboardPage() {
 
   const filteredProducts = availableProducts.filter(p => 
     p.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
-    (p.category && p.category.toLowerCase().includes(searchQuery.toLowerCase())) ||
-    (p.comboTitle && p.comboTitle.toLowerCase().includes(searchQuery.toLowerCase()))
+    ('category' in p && typeof p.category === 'string' && p.category.toLowerCase().includes(searchQuery.toLowerCase())) ||
+    ('comboTitle' in p && typeof p.comboTitle === 'string' && p.comboTitle.toLowerCase().includes(searchQuery.toLowerCase()))
   );
 
   const filteredCustomers = storeCustomers.filter(c => 
@@ -205,12 +205,8 @@ export function POSDashboardPage() {
       const existingCust = storeCustomers.find(c => c.phone === customerPhone);
       if (!existingCust) {
         marketplaceStore.addCustomer({
-          id: `CUST-${Math.floor(1000 + Math.random() * 9000)}`,
           name: customerName,
-          phone: customerPhone,
-          orders: 1,
-          totalSpent: `₹${total.toFixed(2)}`,
-          status: 'Active'
+          phone: customerPhone
         });
       }
     }

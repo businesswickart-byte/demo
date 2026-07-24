@@ -80,7 +80,8 @@ export function ViewCustomersPage() {
                    <tr>
                       <th className="px-6 py-4 font-medium">Customer Info</th>
                       <th className="px-6 py-4 font-medium">Contact</th>
-                      <th className="px-6 py-4 font-medium">Total Orders</th>
+                      <th className="px-6 py-4 font-medium">Wallet Balance</th>
+                      <th className="px-6 py-4 font-medium">Referral Code</th>
                       <th className="px-6 py-4 font-medium">Status</th>
                       <th className="px-6 py-4 font-medium text-right">Actions</th>
                    </tr>
@@ -96,7 +97,14 @@ export function ViewCustomersPage() {
                            <div>{cust.email}</div>
                            <div className="text-slate-500">{cust.phone}</div>
                         </td>
-                        <td className="px-6 py-4 font-medium">{cust.orders}</td>
+                        <td className="px-6 py-4 font-bold text-emerald-600">
+                           ₹{(Number(cust.walletBalance) || 0).toFixed(2)}
+                        </td>
+                        <td className="px-6 py-4">
+                           <span className="font-mono text-xs font-bold text-blue-600 bg-blue-50 border border-blue-100 px-2 py-1 rounded-md">
+                              {cust.referralCode || 'N/A'}
+                           </span>
+                        </td>
                         <td className="px-6 py-4">
                           <span className={`inline-flex items-center px-2.5 py-1 rounded-full border text-xs font-medium ${
                             cust.status === 'Active' ? 'bg-emerald-50 text-emerald-700 border-emerald-200' : 

@@ -47,6 +47,9 @@ export interface Order {
   deliveryPartnerName?: string;
   discountAmount?: string;
   discountReason?: string;
+  walletAmountUsed?: string;
+  isRefundedToWallet?: boolean;
+  refundedAmount?: string;
   cancellationReason?: string;
   cancelledAt?: string;
 }
@@ -108,6 +111,23 @@ export interface DeliveryPartner {
   joinedDate: string;
 }
 
+export interface Warehouse {
+  id: string;
+  name: string;
+  code: string;
+  managerName?: string;
+  phone?: string;
+  email?: string;
+  address: string;
+  city: string;
+  state: string;
+  pincode: string;
+  capacitySqFt?: number;
+  occupancyPercentage?: number;
+  isFulfillmentCenter?: boolean;
+  status: 'Active' | 'Inactive' | 'Maintenance';
+}
+
 // Initial Clean Arrays (No pre-uploaded mock data)
 const INITIAL_BRANDS: Brand[] = [];
 const INITIAL_PRODUCTS: Product[] = [];
@@ -115,6 +135,57 @@ const INITIAL_ORDERS: Order[] = [];
 const INITIAL_SELLERS: Seller[] = [];
 const INITIAL_COUPONS: Coupon[] = [];
 const INITIAL_DELIVERY_PARTNERS: DeliveryPartner[] = [];
+
+const INITIAL_WAREHOUSES: Warehouse[] = [
+  {
+    id: 'WH-001',
+    name: 'Main Warehouse - Central Hub',
+    code: 'WH-SLN-01',
+    managerName: 'Rajesh Sharma',
+    phone: '+91 9821012345',
+    email: 'wh.central@wikcart.in',
+    address: 'Civil Lines Industrial Area, Near Railway Station',
+    city: 'Sultanpur',
+    state: 'Uttar Pradesh',
+    pincode: '228001',
+    capacitySqFt: 25000,
+    occupancyPercentage: 62.5,
+    isFulfillmentCenter: true,
+    status: 'Active'
+  },
+  {
+    id: 'WH-002',
+    name: 'North Sultanpur Logistics Depot',
+    code: 'WH-SLN-02',
+    managerName: 'Vikas Verma',
+    phone: '+91 9821098765',
+    email: 'wh.north@wikcart.in',
+    address: 'Lucknow Road Highway Bypass',
+    city: 'Sultanpur',
+    state: 'Uttar Pradesh',
+    pincode: '228002',
+    capacitySqFt: 15000,
+    occupancyPercentage: 38.0,
+    isFulfillmentCenter: true,
+    status: 'Active'
+  },
+  {
+    id: 'WH-003',
+    name: 'South Express Fulfilment Center',
+    code: 'WH-SLN-03',
+    managerName: 'Suresh Gupta',
+    phone: '+91 9821055443',
+    email: 'wh.south@wikcart.in',
+    address: 'Kurebhar Link Road',
+    city: 'Sultanpur',
+    state: 'Uttar Pradesh',
+    pincode: '228003',
+    capacitySqFt: 18000,
+    occupancyPercentage: 20.0,
+    isFulfillmentCenter: true,
+    status: 'Active'
+  }
+];
 
 export interface VendorRegistration {
   id: string;
@@ -299,12 +370,20 @@ export const marketplaceStore = {
   },
   cancelOrder(orderId: string, reason: string): void {
     const list = this.getOrders();
+    const target = list.find(o => o.id === orderId);
+    if (!target) return;
+
+    const numericAmt = parseFloat(target.amount.replace(/[^0-9.]/g, '')) || 0;
+    const isAlreadyRefunded = Boolean(target.isRefundedToWallet);
+
     const updated = list.map(o => {
       if (o.id === orderId) {
         return {
           ...o,
           status: 'Cancelled' as const,
-          cancellationReason: reason,
+          cancellationReason: reason || 'Order Cancelled',
+          isRefundedToWallet: true,
+          refundedAmount: o.amount,
           cancelledAt: new Date().toLocaleString('en-US', {
             day: '2-digit',
             month: 'short',
@@ -318,6 +397,17 @@ export const marketplaceStore = {
       return o;
     });
     this.saveOrders(updated);
+
+    // Auto refund money back into customer wallet
+    if (numericAmt > 0 && !isAlreadyRefunded) {
+      this.creditCustomerWallet(
+        target.customer,
+        target.phone || '',
+        numericAmt,
+        `Auto Refund for Cancelled Order ${orderId}`
+      );
+    }
+
     this.dispatchAllEvents();
   },
   hasPhoneNumberUsedDiscount(phone: string, excludeOrderId?: string): boolean {
@@ -789,12 +879,22 @@ export const marketplaceStore = {
   },
 
   getCustomers(): any[] {
-    return getStored('customers', INITIAL_CUSTOMERS);
+    const list = getStored('customers', INITIAL_CUSTOMERS);
+    if (!list || list.length === 0) {
+      const DEFAULT_CUSTOMERS = [
+        { id: 'CUST-390', name: 'Alok Nath', email: 'alok@example.com', phone: '9821054321', address: 'Civil Lines, Sultanpur, UP', orders: 12, walletBalance: 500, referralCode: 'ALOK200', status: 'Active' },
+        { id: 'CUST-391', name: 'Vikas Patel', email: 'vikas@example.com', phone: '9876543210', address: 'Golaganj, Sultanpur, UP', orders: 5, walletBalance: 200, referralCode: 'VIKAS200', status: 'Active' },
+        { id: 'CUST-392', name: 'Priya Desai', email: 'priya@example.com', phone: '9123456789', address: 'Super Market, Sultanpur, UP', orders: 8, walletBalance: 350, referralCode: 'PRIYA200', status: 'Active' }
+      ];
+      this.saveCustomers(DEFAULT_CUSTOMERS);
+      return DEFAULT_CUSTOMERS;
+    }
+    return list;
   },
   saveCustomers(list: any[]): void {
     setStored('customers', list);
   },
-  addCustomer(cust: { name: string; email?: string; phone?: string; address?: string }): any {
+  addCustomer(cust: { name: string; email?: string; phone?: string; address?: string; walletBalance?: number; referralCode?: string }): any {
     const list = this.getCustomers();
     // Check if customer with same email or phone already exists
     const existing = list.find(c => (cust.email && c.email.toLowerCase() === cust.email.toLowerCase()) || (cust.phone && c.phone === cust.phone));
@@ -802,18 +902,38 @@ export const marketplaceStore = {
       return existing;
     }
     const newId = `CUST-${String(list.length + 1).padStart(3, '0')}`;
+    const cleanFirstName = (cust.name || 'USER').split(' ')[0].toUpperCase().replace(/[^A-Z]/g, '');
     const newCustomer = {
       id: newId,
       name: cust.name || 'New Customer',
-      email: cust.email || `${cust.name.toLowerCase().replace(/\s+/g, '')}@example.com`,
+      email: cust.email || `${cust.name ? cust.name.toLowerCase().replace(/\s+/g, '') : 'user'}@example.com`,
       phone: cust.phone || '+91 9000000000',
-      address: cust.address || 'India',
+      address: cust.address || 'Sultanpur, UP',
       orders: 0,
+      walletBalance: cust.walletBalance !== undefined ? cust.walletBalance : 0,
+      referralCode: cust.referralCode || `${cleanFirstName || 'USER'}${Math.floor(100 + Math.random() * 899)}`,
       status: 'Active'
     };
     list.unshift(newCustomer);
     this.saveCustomers(list);
     return newCustomer;
+  },
+
+  // REFERRAL CONFIG & LOGS
+  getReferralConfig(): { referrerAmount: number; refereeAmount: number } {
+    return getStored('referralConfig', { referrerAmount: 200, refereeAmount: 200 });
+  },
+  saveReferralConfig(config: { referrerAmount: number; refereeAmount: number }): void {
+    setStored('referralConfig', config);
+  },
+  getReferralsList(): any[] {
+    const DEFAULT_REFERRALS = [
+      { id: 'REF-101', referrerRole: 'User', referrerId: 'CUST-390', referrerName: 'Alok Nath', referrerPhone: '9821054321', refereeRole: 'User', refereeId: 'CUST-391', refereeName: 'Vikas Patel', refereePhone: '9876543210', date: '24 Jul 2026', status: 'Completed', earned: '₹400.00' },
+    ];
+    return getStored('referralsList', DEFAULT_REFERRALS);
+  },
+  saveReferralsList(list: any[]): void {
+    setStored('referralsList', list);
   },
 
   // VENDOR REGISTRATIONS
@@ -917,10 +1037,220 @@ export const marketplaceStore = {
   },
 
   getWalletTransactions(): any[] {
+    const INITIAL_WALLET_TXNS = [
+      { id: 'WTXN-801', date: '24 Jul 2026, 10:30 AM', customer: 'Alok Nath', phone: '9821054321', desc: 'Welcome Bonus Credited', amount: '₹200.00', type: 'Credit', closingBal: '₹500.00' },
+      { id: 'WTXN-802', date: '23 Jul 2026, 04:15 PM', customer: 'Vikas Patel', phone: '9876543210', desc: 'Referral Bonus Credited', amount: '₹200.00', type: 'Credit', closingBal: '₹200.00' }
+    ];
     return getStored('walletTransactions', INITIAL_WALLET_TXNS);
   },
   saveWalletTransactions(list: any[]): void {
     setStored('walletTransactions', list);
+  },
+
+  getCustomerWalletBalance(phoneOrName: string): number {
+    if (!phoneOrName) return 0;
+    const clean = phoneOrName.trim().toLowerCase().replace(/\D/g, '');
+    const customers = this.getCustomers();
+    const cust = customers.find(c => 
+      (clean.length > 3 && c.phone && c.phone.replace(/\D/g, '').endsWith(clean.slice(-10))) ||
+      c.name.toLowerCase() === phoneOrName.trim().toLowerCase()
+    );
+    return cust ? (Number(cust.walletBalance) || 0) : 0;
+  },
+
+  getOrCreateCustomer(name: string, phone: string, address?: string): any {
+    const customers = this.getCustomers();
+    const cleanPhone = (phone || '').replace(/\D/g, '');
+    
+    let cust = customers.find(c => 
+      (cleanPhone.length > 3 && c.phone && c.phone.replace(/\D/g, '').endsWith(cleanPhone.slice(-10))) ||
+      (c.name.toLowerCase() === (name || '').trim().toLowerCase())
+    );
+
+    if (!cust) {
+      const firstName = (name || 'USER').split(' ')[0].toUpperCase().replace(/[^A-Z]/g, '');
+      const code = `${firstName || 'USER'}${Math.floor(100 + Math.random() * 899)}`;
+      cust = {
+        id: `CUST-${String(customers.length + 1).padStart(3, '0')}`,
+        name: name || 'Valued Customer',
+        email: `${(name || 'user').toLowerCase().replace(/\s+/g, '')}@example.com`,
+        phone: phone || '+91 9821000000',
+        address: address || 'Sultanpur, UP',
+        orders: 0,
+        walletBalance: 0,
+        referralCode: code,
+        status: 'Active'
+      };
+      customers.unshift(cust);
+      this.saveCustomers(customers);
+    }
+    return cust;
+  },
+
+  creditCustomerWallet(customerName: string, phone: string, amount: number, desc: string): number {
+    if (amount <= 0) return 0;
+    const customers = this.getCustomers();
+    const cleanPhone = (phone || '').replace(/\D/g, '');
+    
+    let targetIndex = customers.findIndex(c => 
+      (cleanPhone.length > 3 && c.phone && c.phone.replace(/\D/g, '').endsWith(cleanPhone.slice(-10))) ||
+      (c.name.toLowerCase() === (customerName || '').trim().toLowerCase())
+    );
+
+    let targetCustomer;
+    if (targetIndex >= 0) {
+      targetCustomer = customers[targetIndex];
+    } else {
+      targetCustomer = this.getOrCreateCustomer(customerName, phone);
+      targetIndex = customers.findIndex(c => c.id === targetCustomer.id);
+    }
+
+    const currentBal = Number(targetCustomer.walletBalance) || 0;
+    const newBal = currentBal + amount;
+    
+    targetCustomer.walletBalance = newBal;
+    if (targetIndex >= 0) {
+      customers[targetIndex] = targetCustomer;
+    }
+    this.saveCustomers(customers);
+
+    // Record wallet transaction
+    const wtxns = this.getWalletTransactions();
+    const newTxn = {
+      id: `WTXN-${Math.floor(1000 + Math.random() * 9000)}`,
+      date: new Date().toLocaleString('en-US', {
+        day: '2-digit', month: 'short', year: 'numeric',
+        hour: '2-digit', minute: '2-digit', hour12: true
+      }),
+      customer: targetCustomer.name,
+      phone: targetCustomer.phone,
+      desc: desc,
+      amount: `₹${amount.toFixed(2)}`,
+      type: 'Credit',
+      closingBal: `₹${newBal.toFixed(2)}`
+    };
+    wtxns.unshift(newTxn);
+    this.saveWalletTransactions(wtxns);
+    this.dispatchAllEvents();
+
+    return newBal;
+  },
+
+  debitCustomerWallet(customerName: string, phone: string, amount: number, desc: string): { success: boolean; deducted: number; newBalance: number } {
+    if (amount <= 0) return { success: true, deducted: 0, newBalance: this.getCustomerWalletBalance(phone || customerName) };
+    
+    const customers = this.getCustomers();
+    const cleanPhone = (phone || '').replace(/\D/g, '');
+    
+    let targetIndex = customers.findIndex(c => 
+      (cleanPhone.length > 3 && c.phone && c.phone.replace(/\D/g, '').endsWith(cleanPhone.slice(-10))) ||
+      (c.name.toLowerCase() === (customerName || '').trim().toLowerCase())
+    );
+
+    if (targetIndex < 0) {
+      const created = this.getOrCreateCustomer(customerName, phone);
+      targetIndex = customers.findIndex(c => c.id === created.id);
+    }
+
+    const targetCustomer = customers[targetIndex];
+    const currentBal = Number(targetCustomer.walletBalance) || 0;
+    
+    if (currentBal <= 0) {
+      return { success: false, deducted: 0, newBalance: 0 };
+    }
+
+    const actualDeducted = Math.min(currentBal, amount);
+    const newBal = currentBal - actualDeducted;
+
+    targetCustomer.walletBalance = newBal;
+    customers[targetIndex] = targetCustomer;
+    this.saveCustomers(customers);
+
+    // Record wallet transaction
+    const wtxns = this.getWalletTransactions();
+    const newTxn = {
+      id: `WTXN-${Math.floor(1000 + Math.random() * 9000)}`,
+      date: new Date().toLocaleString('en-US', {
+        day: '2-digit', month: 'short', year: 'numeric',
+        hour: '2-digit', minute: '2-digit', hour12: true
+      }),
+      customer: targetCustomer.name,
+      phone: targetCustomer.phone,
+      desc: desc,
+      amount: `₹${actualDeducted.toFixed(2)}`,
+      type: 'Debit',
+      closingBal: `₹${newBal.toFixed(2)}`
+    };
+    wtxns.unshift(newTxn);
+    this.saveWalletTransactions(wtxns);
+    this.dispatchAllEvents();
+
+    return { success: true, deducted: actualDeducted, newBalance: newBal };
+  },
+
+  processReferralCode(referralCode: string, newCustomerName: string, newCustomerPhone: string): { success: boolean; message: string; referrerName?: string } {
+    const codeClean = (referralCode || '').trim().toUpperCase();
+    if (!codeClean) return { success: false, message: 'Please enter a valid referral code.' };
+
+    const customers = this.getCustomers();
+    const referrer = customers.find(c => c.referralCode && c.referralCode.toUpperCase() === codeClean);
+
+    if (!referrer) {
+      return { success: false, message: `Referral code "${codeClean}" is invalid or not found.` };
+    }
+
+    const referrerCleanPhone = (referrer.phone || '').replace(/\D/g, '');
+    const newCleanPhone = (newCustomerPhone || '').replace(/\D/g, '');
+    if (referrerCleanPhone.length > 5 && newCleanPhone.length > 5 && referrerCleanPhone.endsWith(newCleanPhone.slice(-10))) {
+      return { success: false, message: 'You cannot use your own referral code.' };
+    }
+
+    const config = this.getReferralConfig();
+    const referrerReward = Number(config.referrerAmount) || 200;
+    const refereeReward = Number(config.refereeAmount) || 200;
+
+    // Credit Referrer
+    this.creditCustomerWallet(
+      referrer.name,
+      referrer.phone,
+      referrerReward,
+      `Referral Reward for inviting ${newCustomerName || 'a new user'}`
+    );
+
+    // Credit Referee
+    this.creditCustomerWallet(
+      newCustomerName,
+      newCustomerPhone,
+      refereeReward,
+      `Referral Bonus for signing up with code ${codeClean}`
+    );
+
+    // Log in referrals list
+    const referrals = this.getReferralsList();
+    const refereeCustomer = this.getOrCreateCustomer(newCustomerName, newCustomerPhone);
+    
+    const todayStr = new Date().toLocaleDateString('en-GB', { day: '2-digit', month: 'short', year: 'numeric' });
+    referrals.unshift({
+      id: `REF-${Math.floor(100 + Math.random() * 899)}`,
+      referrerRole: 'User',
+      referrerId: referrer.id,
+      referrerName: referrer.name,
+      referrerPhone: referrer.phone,
+      refereeRole: 'User',
+      refereeId: refereeCustomer.id,
+      refereeName: newCustomerName,
+      refereePhone: newCustomerPhone,
+      date: todayStr,
+      status: 'Completed',
+      earned: `₹${(referrerReward + refereeReward).toFixed(2)}`
+    });
+    this.saveReferralsList(referrals);
+
+    return {
+      success: true,
+      message: `🎉 Referral code applied! ₹${refereeReward} bonus credited to your wallet! (${referrer.name} also received ₹${referrerReward})`,
+      referrerName: referrer.name
+    };
   },
 
   // BRANDS
@@ -1005,6 +1335,54 @@ export const marketplaceStore = {
     window.dispatchEvent(new Event('store_taxRules_updated'));
   },
 
+  // WAREHOUSES
+  getWarehouses(): Warehouse[] {
+    return getStored('warehouses', INITIAL_WAREHOUSES);
+  },
+  saveWarehouses(warehouses: Warehouse[]): void {
+    setStored('warehouses', warehouses);
+  },
+  addWarehouse(warehouse: Partial<Warehouse>): Warehouse {
+    const list = this.getWarehouses();
+    const newNum = list.length + 1;
+    const newId = `WH-${String(newNum).padStart(3, '0')}`;
+    const codeNum = String(newNum).padStart(2, '0');
+    const item: Warehouse = {
+      id: newId,
+      name: warehouse.name || 'New Warehouse',
+      code: warehouse.code || `WH-SLN-${codeNum}`,
+      managerName: warehouse.managerName || 'Operations Manager',
+      phone: warehouse.phone || '+91 9821000000',
+      email: warehouse.email || 'warehouse@wikcart.in',
+      address: warehouse.address || 'Industrial Area',
+      city: warehouse.city || 'Sultanpur',
+      state: warehouse.state || 'Uttar Pradesh',
+      pincode: warehouse.pincode || '228001',
+      capacitySqFt: warehouse.capacitySqFt || 10000,
+      occupancyPercentage: warehouse.occupancyPercentage || 25,
+      isFulfillmentCenter: warehouse.isFulfillmentCenter !== false,
+      status: warehouse.status || 'Active'
+    };
+    list.unshift(item);
+    this.saveWarehouses(list);
+    return item;
+  },
+  updateWarehouse(id: string, updatedFields: Partial<Warehouse>): Warehouse | null {
+    const list = this.getWarehouses();
+    const index = list.findIndex(w => w.id === id);
+    if (index !== -1) {
+      list[index] = { ...list[index], ...updatedFields };
+      this.saveWarehouses(list);
+      return list[index];
+    }
+    return null;
+  },
+  deleteWarehouse(id: string): void {
+    const list = this.getWarehouses();
+    const filtered = list.filter(w => w.id !== id);
+    this.saveWarehouses(filtered);
+  },
+
   // CLEAR & RESTORE DUMMY DATA METHODS
   isDummyDataRemoved(): boolean {
     return localStorage.getItem('dummyDataRemoved') === 'true';
@@ -1016,7 +1394,7 @@ export const marketplaceStore = {
       const keysToClear = [
         'products', 'orders', 'sellers', 'coupons', 'deliveryPartners',
         'categories', 'subcategories', 'withdrawals', 'customers',
-        'globalInventory', 'transactions', 'walletTransactions', 'vendorRegistrations', 'brands'
+        'globalInventory', 'transactions', 'walletTransactions', 'vendorRegistrations', 'brands', 'warehouses'
       ];
       keysToClear.forEach(k => localStorage.removeItem(k));
     } else {
@@ -1035,6 +1413,7 @@ export const marketplaceStore = {
       localStorage.setItem('walletTransactions', JSON.stringify([]));
       localStorage.setItem('vendorRegistrations', JSON.stringify([]));
       localStorage.setItem('brands', JSON.stringify([]));
+      localStorage.setItem('warehouses', JSON.stringify([]));
     }
     this.dispatchAllEvents();
   },
@@ -1044,7 +1423,7 @@ export const marketplaceStore = {
     const keysToClear = [
       'products', 'orders', 'sellers', 'coupons', 'deliveryPartners',
       'categories', 'subcategories', 'withdrawals', 'customers',
-      'globalInventory', 'transactions', 'walletTransactions', 'vendorRegistrations', 'brands'
+      'globalInventory', 'transactions', 'walletTransactions', 'vendorRegistrations', 'brands', 'warehouses'
     ];
     keysToClear.forEach(k => localStorage.removeItem(k));
     this.dispatchAllEvents();
@@ -1054,7 +1433,8 @@ export const marketplaceStore = {
     const keys = [
       'products', 'orders', 'sellers', 'coupons', 'deliveryPartners',
       'categories', 'subcategories', 'withdrawals', 'customers',
-      'globalInventory', 'transactions', 'walletTransactions', 'vendorRegistrations', 'brands'
+      'globalInventory', 'transactions', 'walletTransactions', 'vendorRegistrations', 'brands',
+      'referralConfig', 'referralsList', 'warehouses'
     ];
     keys.forEach(k => {
       window.dispatchEvent(new Event(`store_${k}_updated`));

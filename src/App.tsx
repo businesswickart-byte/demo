@@ -51,6 +51,7 @@ import { EarningsPage } from './pages/EarningsPage';
 import { ZonesPage } from './pages/ZonesPage';
 import { AllStoresPage } from './pages/AllStoresPage';
 import { AddStorePage } from './pages/AddStorePage';
+import { WarehousesPage } from './pages/WarehousesPage';
 import { ManagePartnersPage } from './pages/ManagePartnersPage';
 
 import { StorefrontApp } from './pages/storefront/StorefrontApp';
@@ -335,6 +336,8 @@ export default function App() {
               <OrdersPage />
             ) : activePage === 'Dispatch Management' ? (
               <DispatchManagementPage />
+            ) : activePage === 'Warehouses' || activePage === 'Warehouses Management' ? (
+              <WarehousesPage />
             ) : activePage === 'Add Seller' ? (
               <AddSellerPage />
             ) : activePage === 'Add Customer' ? (

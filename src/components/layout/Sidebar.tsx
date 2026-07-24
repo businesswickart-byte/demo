@@ -20,7 +20,8 @@ import {
   Headset,
   ChevronDown,
   RotateCcw,
-  LogOut
+  LogOut,
+  Building2
 } from 'lucide-react';
 
 const navGroups = [
@@ -37,6 +38,7 @@ const navGroups = [
       { name: 'Orders', icon: ShoppingCart },
       { name: 'Return Requests', icon: RotateCcw, hasSubmenu: true, subItems: ['Manage Return Requests', 'Reasons For return'] },
       { name: 'Dispatch Management', icon: Truck },
+      { name: 'Warehouses', icon: Building2 },
     ]
   },
   {

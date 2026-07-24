@@ -1,5 +1,5 @@
 -- ==============================================================================
--- WIKCART HYPERLOCAL MARKETPLACE - SUPABASE POSTGRESQL SCHEMA
+-- WIKCART HYPERLOCAL MARKETPLACE - POSTGRESQL CLOUD DATABASE SCHEMA
 -- ==============================================================================
 
 -- 1. EXTENSIONS
@@ -298,19 +298,16 @@ CREATE TABLE IF NOT EXISTS public.pos_orders (
 -- Migration check for existing pos_orders table from previous schemas
 DO $$
 BEGIN
-    -- Rename customer_mobile -> phone_number if customer_mobile exists
     IF EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name='pos_orders' AND column_name='customer_mobile')
        AND NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name='pos_orders' AND column_name='phone_number') THEN
         ALTER TABLE public.pos_orders RENAME COLUMN customer_mobile TO phone_number;
     END IF;
 
-    -- Rename total_payable -> total_amount if total_payable exists
     IF EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name='pos_orders' AND column_name='total_payable')
        AND NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name='pos_orders' AND column_name='total_amount') THEN
         ALTER TABLE public.pos_orders RENAME COLUMN total_payable TO total_amount;
     END IF;
 
-    -- Ensure all columns exist
     ALTER TABLE public.pos_orders ADD COLUMN IF NOT EXISTS order_number TEXT;
     ALTER TABLE public.pos_orders ADD COLUMN IF NOT EXISTS customer_name TEXT DEFAULT 'Walk-in Customer';
     ALTER TABLE public.pos_orders ADD COLUMN IF NOT EXISTS phone_number TEXT;
@@ -346,12 +343,8 @@ AS $$
 DECLARE
     discount_count INT;
 BEGIN
-    -- Check if the new/updated order has a discount applied
     IF NEW.discount_amount > 0 OR (NEW.discount_reason IS NOT NULL AND LENGTH(TRIM(NEW.discount_reason)) > 0) THEN
-        
-        -- Ignore walk-in or invalid phone numbers
         IF NEW.phone_number IS NOT NULL AND NEW.phone_number <> 'N/A' AND LENGTH(TRIM(NEW.phone_number)) >= 5 THEN
-            
             SELECT COUNT(*) INTO discount_count
             FROM public.pos_orders
             WHERE phone_number = NEW.phone_number
@@ -397,7 +390,6 @@ CREATE TABLE IF NOT EXISTS public.dispatch_manifests (
     created_at TIMESTAMPTZ DEFAULT NOW()
 );
 
--- Migration check for dispatch_manifests
 DO $$
 BEGIN
     ALTER TABLE public.dispatch_manifests ADD COLUMN IF NOT EXISTS merchant_store_id UUID;
@@ -420,7 +412,6 @@ CREATE TABLE IF NOT EXISTS public.referral_configs (
     updated_at TIMESTAMPTZ DEFAULT NOW()
 );
 
--- Insert default referral values
 INSERT INTO public.referral_configs (referrer_reward, referee_reward)
 VALUES (200.00, 200.00)
 ON CONFLICT DO NOTHING;
@@ -437,7 +428,6 @@ CREATE TABLE IF NOT EXISTS public.tax_rules (
     created_at TIMESTAMPTZ DEFAULT NOW()
 );
 
--- Default Tax Rules (GST)
 INSERT INTO public.tax_rules (rule_name, rate_percentage, applies_to) VALUES
 ('Standard GST - 18%', 18.00, 'Electronics, Fashion'),
 ('Lower GST - 12%', 12.00, 'Processed Foods'),
@@ -464,7 +454,6 @@ CREATE TABLE IF NOT EXISTS public.platform_settings (
     updated_at TIMESTAMPTZ DEFAULT NOW()
 );
 
--- Homepage Top Categories & Sections
 CREATE TABLE IF NOT EXISTS public.homepage_top_categories (
     id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
     slot_number INT NOT NULL UNIQUE CHECK (slot_number BETWEEN 1 AND 8),
@@ -515,7 +504,6 @@ CREATE TABLE IF NOT EXISTS public.warehouses (
     updated_at TIMESTAMPTZ DEFAULT NOW()
 );
 
--- Seed Initial Default Warehouses
 INSERT INTO public.warehouses (warehouse_name, code, manager_name, contact_phone, contact_email, address_line, city, state, pincode, storage_capacity_sqft, current_occupancy_percentage, is_fulfillment_center, status) VALUES
 ('Main Warehouse - Central Hub', 'WH-SLN-01', 'Rajesh Sharma', '+91 9821012345', 'wh.central@wikcart.in', 'Civil Lines Industrial Area, Near Railway Station', 'Sultanpur', 'Uttar Pradesh', '228001', 25000, 62.50, TRUE, 'Active'),
 ('North Sultanpur Logistics Depot', 'WH-SLN-02', 'Vikas Verma', '+91 9821098765', 'wh.north@wikcart.in', 'Lucknow Road Highway Bypass', 'Sultanpur', 'Uttar Pradesh', '228002', 15000, 38.00, TRUE, 'Active'),
@@ -556,7 +544,6 @@ BEGIN
     ALTER TABLE public.delivery_partners ADD COLUMN IF NOT EXISTS joined_date DATE DEFAULT CURRENT_DATE;
 END $$;
 
--- Seed Initial Delivery Partners
 INSERT INTO public.delivery_partners (type, name, phone, address, branch, state, city, delivery_area, status)
 VALUES 
 ('Delivery Boy', 'Amit Patel', '+91 98765 43210', '12, Civil Lines, Near Town Hall', 'Sultanpur Main Branch', 'Uttar Pradesh', 'Sultanpur', 'Sultanpur Cantonment, Amhat, and Civil Lines', 'Active'),
@@ -644,7 +631,6 @@ ALTER TABLE public.delivery_partners ENABLE ROW LEVEL SECURITY;
 ALTER TABLE public.support_tickets ENABLE ROW LEVEL SECURITY;
 ALTER TABLE public.support_ticket_replies ENABLE ROW LEVEL SECURITY;
 
--- Create fine-grained policies for all tables to ensure RLS compliance with Supabase Linter
 DO $$
 DECLARE
     tbl text;
@@ -658,17 +644,14 @@ DECLARE
     ];
 BEGIN
     FOREACH tbl IN ARRAY tables LOOP
-        -- Drop legacy/overly-permissive policies
         EXECUTE format('DROP POLICY IF EXISTS %I ON public.%I', 'Allow public access ' || tbl, tbl);
         EXECUTE format('DROP POLICY IF EXISTS %I ON public.%I', 'Allow public select ' || tbl, tbl);
         EXECUTE format('DROP POLICY IF EXISTS %I ON public.%I', 'Allow insert ' || tbl, tbl);
         EXECUTE format('DROP POLICY IF EXISTS %I ON public.%I', 'Allow update ' || tbl, tbl);
         EXECUTE format('DROP POLICY IF EXISTS %I ON public.%I', 'Allow delete ' || tbl, tbl);
 
-        -- Public SELECT policy (explicitly allowed by Supabase Linter 0024)
         EXECUTE format('CREATE POLICY %I ON public.%I FOR SELECT USING (true)', 'Allow public select ' || tbl, tbl);
 
-        -- Non-literal write policies using role checks to pass linter checks
         EXECUTE format('CREATE POLICY %I ON public.%I FOR INSERT WITH CHECK (auth.role() IS NOT NULL)', 'Allow insert ' || tbl, tbl);
         EXECUTE format('CREATE POLICY %I ON public.%I FOR UPDATE USING (auth.role() IS NOT NULL)', 'Allow update ' || tbl, tbl);
         EXECUTE format('CREATE POLICY %I ON public.%I FOR DELETE USING (auth.role() IS NOT NULL)', 'Allow delete ' || tbl, tbl);

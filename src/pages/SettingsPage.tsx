@@ -43,14 +43,14 @@ export function SettingsPage() {
 
   const handleTestConnection = async () => {
     setIsTesting(true);
-    setStatusMessage('Pinging Supabase and checking schema...');
+    setStatusMessage('Pinging Cloud Database and checking schema...');
     try {
       const status = await marketplaceStore.checkSupabaseStatus();
       setDbStatus(status);
       if (status.connected) {
-        setStatusMessage('Supabase connection verified! Tables are active.');
+        setStatusMessage('Cloud Database connection verified! Tables are active.');
       } else {
-        setStatusMessage('Could not connect to Supabase. Check credentials.');
+        setStatusMessage('Could not connect to Cloud Database. Check credentials.');
       }
     } catch (err: any) {
       setDbStatus({
@@ -70,12 +70,12 @@ export function SettingsPage() {
 
   const handlePushData = async () => {
     setIsSyncing(true);
-    setStatusMessage('Syncing local offline cache to Supabase tables...');
+    setStatusMessage('Syncing local offline cache to Cloud Database tables...');
     try {
       await marketplaceStore.pushLocalDataToSupabase();
       const status = await marketplaceStore.checkSupabaseStatus();
       setDbStatus(status);
-      setStatusMessage('Local data successfully pushed and merged with Supabase!');
+      setStatusMessage('Local data successfully pushed and merged with Cloud Database!');
     } catch (err: any) {
       setStatusMessage(`Sync failed: ${err.message || err}`);
     } finally {
@@ -85,12 +85,12 @@ export function SettingsPage() {
 
   const handlePullData = async () => {
     setIsFetching(true);
-    setStatusMessage('Fetching latest records from Supabase...');
+    setStatusMessage('Fetching latest records from Cloud Database...');
     try {
       await marketplaceStore.syncAllFromSupabase();
       const status = await marketplaceStore.checkSupabaseStatus();
       setDbStatus(status);
-      setStatusMessage('Latest records pulled from Supabase successfully!');
+      setStatusMessage('Latest records pulled from Cloud Database successfully!');
     } catch (err: any) {
       setStatusMessage(`Fetch failed: ${err.message || err}`);
     } finally {
@@ -459,7 +459,7 @@ export function SettingsPage() {
                     <div>
                       <CardTitle className="text-lg font-semibold flex items-center gap-2">
                         <Database className="w-5 h-5 text-blue-600" />
-                        Supabase Database Status
+                        Cloud Database Status
                       </CardTitle>
                       <CardDescription className="text-sm text-slate-500 mt-0.5">
                         Verify platform database connectivity and synchronize records.
@@ -488,7 +488,7 @@ export function SettingsPage() {
                       <span className="block text-xs font-medium text-slate-400 uppercase tracking-wider mb-1">Connection Strategy</span>
                       <span className="text-xs font-semibold text-slate-700 flex items-center gap-1.5">
                         <Laptop className="w-3.5 h-3.5 text-slate-400" />
-                        Client-side Direct Integration (Supabase SDK)
+                        Direct Cloud Engine Sync
                       </span>
                     </div>
                   </div>
@@ -585,7 +585,7 @@ export function SettingsPage() {
                       className="flex items-center gap-2 px-4 py-2 bg-slate-900 hover:bg-black text-white text-xs font-semibold rounded-lg disabled:opacity-50 transition-colors"
                     >
                       <RefreshCw className={`w-3.5 h-3.5 ${isFetching ? 'animate-spin' : ''}`} />
-                      Pull latest from Supabase
+                      Pull Latest Records
                     </button>
 
                     <button
@@ -594,7 +594,7 @@ export function SettingsPage() {
                       className="flex items-center gap-2 px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white text-xs font-semibold rounded-lg disabled:opacity-50 transition-colors shadow-sm ml-auto"
                     >
                       <Play className={`w-3.5 h-3.5 ${isSyncing ? 'animate-spin' : ''}`} />
-                      Push Local Data to Supabase
+                      Push Local Data to Cloud
                     </button>
                   </div>
                 </CardContent>
@@ -610,13 +610,13 @@ export function SettingsPage() {
                 </CardHeader>
                 <CardContent className="space-y-4 text-xs text-slate-600">
                   <p>
-                    Wikcart is fully integrated with <strong>Supabase</strong>. If your environment is configured, adding any new delivery partner or coupon on the panels will automatically be saved <strong>live to your cloud database in real-time</strong>.
+                    Wikcart is fully integrated with a cloud database engine. If your environment is configured, adding any new delivery partner or coupon on the panels will automatically be saved <strong>live to your cloud database in real-time</strong>.
                   </p>
                   
                   <div className="space-y-2">
                     <h4 className="font-bold text-slate-800">1. Required SQL Schema Tables</h4>
                     <p>
-                      Ensure you have created the correct tables in your Supabase project dashboard (under the SQL Editor). Copy the schema from the file <code className="px-1.5 py-0.5 bg-slate-100 border border-slate-200 rounded font-mono text-[10px] text-slate-800">supabase_schema.sql</code> or use the specific script available on the <code className="text-blue-600 font-medium">Delivery Partners Page</code>.
+                      Ensure you have created the correct tables in your database dashboard (under the SQL Editor). Copy the schema from the file <code className="px-1.5 py-0.5 bg-slate-100 border border-slate-200 rounded font-mono text-[10px] text-slate-800">database_schema.sql</code> or use the specific script available on the <code className="text-blue-600 font-medium">Delivery Partners Page</code>.
                     </p>
                   </div>
 
@@ -626,15 +626,15 @@ export function SettingsPage() {
                       Define the following secret variables in your environment project settings (.env):
                     </p>
                     <ul className="list-disc pl-5 space-y-1 font-mono text-[11px] text-slate-700">
-                      <li><strong>VITE_SUPABASE_URL</strong>: The API URL of your Supabase project (e.g. <code className="bg-slate-50 px-1">https://xxx.supabase.co</code>)</li>
-                      <li><strong>VITE_SUPABASE_ANON_KEY</strong>: The anonymous public API key of your Supabase project</li>
+                      <li><strong>VITE_DB_URL</strong> / <strong>VITE_SUPABASE_URL</strong>: The API URL of your cloud database project</li>
+                      <li><strong>VITE_DB_ANON_KEY</strong> / <strong>VITE_SUPABASE_ANON_KEY</strong>: The anonymous public API key of your cloud database project</li>
                     </ul>
                   </div>
 
                   <div className="bg-amber-50/50 border border-amber-100 rounded-lg p-3 text-[11px] text-amber-800 leading-relaxed flex gap-2">
                     <AlertTriangle className="w-4 h-4 text-amber-600 shrink-0 mt-0.5" />
                     <div>
-                      <strong>Offline Resilience:</strong> If your Supabase credentials are not configured, Wikcart seamlessly stores everything locally in your browser cache (<code className="font-mono">localStorage</code>) so that you never lose your progress during development.
+                      <strong>Offline Resilience:</strong> If your database credentials are not configured, Wikcart seamlessly stores everything locally in your browser cache (<code className="font-mono">localStorage</code>) so that you never lose your progress during development.
                     </div>
                   </div>
                 </CardContent>
@@ -742,7 +742,7 @@ export function SettingsPage() {
                   </div>
                   <div className="flex items-start gap-2">
                     <span className="text-emerald-500 font-bold">✔</span>
-                    <p><strong>Cloud Sync Ready:</strong> Configure Supabase connection string keys to enable permanent cloud records across sessions.</p>
+                    <p><strong>Cloud Sync Ready:</strong> Configure Cloud Database connection keys to enable permanent records across sessions.</p>
                   </div>
                   <div className="flex items-start gap-2">
                     <span className="text-emerald-500 font-bold">✔</span>

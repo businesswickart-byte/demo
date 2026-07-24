@@ -2,12 +2,13 @@ import React, { useState, useEffect } from 'react';
 import { Sidebar } from '../../components/layout/Sidebar';
 import { Header } from '../../components/layout/Header';
 import { PagePlaceholder } from '../PagePlaceholder';
-import { Users, Store, Bike, ShoppingCart, Box, DollarSign, LifeBuoy, AlertCircle, LogOut, ChevronDown, ArrowLeft } from 'lucide-react';
+import { Users, Store, Bike, ShoppingCart, Box, DollarSign, LifeBuoy, AlertCircle, LogOut, ChevronDown, ArrowLeft, FileText } from 'lucide-react';
 
 import { SellerDashboardPage } from './SellerDashboardPage';
 import { SellerProductsPage } from './SellerProductsPage';
 import { SellerOrdersPage } from './SellerOrdersPage';
 import { SellerInventoryPage } from './SellerInventoryPage';
+import { SellerKYCPage } from './SellerKYCPage';
 import { marketplaceStore, useMarketplaceData } from '../../lib/store';
 import { useActiveSellerStore } from '../../lib/useActiveSellerStore';
 import { navigateTo } from '../../lib/navigation';
@@ -20,6 +21,7 @@ const sellerNavGroups = [
       { name: 'Dashboard', icon: Store },
       { name: 'My Products', icon: Box, hasSubmenu: true, subItems: ['Add Product', 'Approved Products', 'Pending Approvals'] },
       { name: 'Inventory & Stock', icon: Box },
+      { name: 'KYC & Verification', icon: FileText },
     ]
   },
   {
@@ -230,6 +232,8 @@ export function SellerPanel() {
                 <SellerOrdersPage />
              ) : activePage === 'Inventory & Stock' ? (
                 <SellerInventoryPage />
+             ) : activePage === 'KYC & Verification' ? (
+                <SellerKYCPage />
              ) : (
                 <PagePlaceholder pageName={activePage} />
              )}

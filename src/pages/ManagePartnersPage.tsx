@@ -148,7 +148,7 @@ export function ManagePartnersPage() {
     return matchesSearch && matchesType;
   });
 
-  const sqlCode = `-- SQL SCHEMA FOR DELIVERY PARTNERS TABLE (Copy & Paste in Supabase SQL Editor)
+  const sqlCode = `-- SQL SCHEMA FOR DELIVERY PARTNERS TABLE (Copy & Paste in SQL Editor)
 -- Creates the table with appropriate constraints, types, and indexes
 
 CREATE TABLE IF NOT EXISTS public.delivery_partners (
@@ -170,7 +170,7 @@ CREATE TABLE IF NOT EXISTS public.delivery_partners (
 CREATE INDEX IF NOT EXISTS idx_delivery_partners_city_state ON public.delivery_partners(city, state);
 CREATE INDEX IF NOT EXISTS idx_delivery_partners_type ON public.delivery_partners(type);
 
--- Enable Row Level Security (RLS) for Supabase
+-- Enable Row Level Security (RLS)
 ALTER TABLE public.delivery_partners ENABLE ROW LEVEL SECURITY;
 
 -- Setup RLS Policies
@@ -532,9 +532,9 @@ VALUES
           <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
             <div>
               <CardTitle className="text-slate-900 font-extrabold flex items-center gap-2">
-                <Database className="w-5 h-5 text-indigo-600" /> Supabase Database SQL Script
+                <Database className="w-5 h-5 text-indigo-600" /> Cloud Database SQL Script
               </CardTitle>
-              <CardDescription className="text-indigo-950/70">Run this SQL code in your Supabase SQL Editor to synchronize the schema for production deployment.</CardDescription>
+              <CardDescription className="text-indigo-950/70">Run this SQL code in your Database SQL Editor to synchronize the schema for production deployment.</CardDescription>
             </div>
             <button
               onClick={copyToClipboard}
@@ -561,7 +561,7 @@ VALUES
           <div className="p-4 bg-indigo-50 border-t border-indigo-100 rounded-b-2xl flex items-start gap-2.5 text-xs text-indigo-900/80 font-medium">
             <Info className="w-4 h-4 text-indigo-600 shrink-0 mt-0.5" />
             <p>
-              This script establishes the database table <strong>delivery_partners</strong> with automated UUID mapping, state/city indexes, operational flags, and Supabase Row-Level Security (RLS) rules so that your production backend is completely ready for safe read-write calls.
+              This script establishes the database table <strong>delivery_partners</strong> with automated UUID mapping, state/city indexes, operational flags, and Row-Level Security (RLS) rules so that your production backend is completely ready for safe read-write calls.
             </p>
           </div>
         </CardContent>
